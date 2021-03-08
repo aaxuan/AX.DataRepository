@@ -12,7 +12,7 @@ using System.Text;
 
 namespace AX.DataRepository
 {
-    public class DataRepository : IDisposable
+    public class DataRepository : IDisposable, IDataRepository
     {
         private IDbTransaction DBTransaction { get; set; }
 
@@ -171,7 +171,8 @@ namespace AX.DataRepository
         {
             var keyProperties = TypeMaper.GetSingleKey<T>();
             var sql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
-            var param = new DynamicParameters().Add(Adapter.DbParmChar + keyProperties.Name, PrimaryKey);
+            var param = new DynamicParameters();
+            param.Add(Adapter.DbParmChar + keyProperties.Name, PrimaryKey);
             return SqlMapper.QuerySingleOrDefault<T>(DBConnection, sql, param, DBTransaction, CommandTimeout);
         }
 
@@ -296,7 +297,8 @@ namespace AX.DataRepository
         {
             var keyProperties = TypeMaper.GetSingleKey<T>();
             var sql = SqlBuilder.BuildDelete(TypeMaper.GetTableName<T>()).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
-            var param = new DynamicParameters().Add($"{Adapter.DbParmChar}{keyProperties.Name}", id);
+            var param = new DynamicParameters();
+            param.Add($"{Adapter.DbParmChar}{keyProperties.Name}", id);
             return ExecuteNonQuery(sql, param);
         }
 

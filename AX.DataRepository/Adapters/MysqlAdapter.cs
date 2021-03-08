@@ -28,11 +28,19 @@ namespace AX.DataRepository.Adapters
         {
             var result = new StringBuilder();
 
-            result.Append($"CREATE TABLE IF NOT EXISTS {tableName} (");
-            result.Append(string.Join(",", propertyInfos.Select(p => $"{p.Name.ToLower()} {GetType(p)}")));
-            result.Append($",PRIMARY KEY({KeyName})");
-            result.Append($")");
-            result.Append($"ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '{tableName}';");
+            result.AppendLine($"DROP TABLE IF EXISTS `{tableName}`;");
+            result.AppendLine($"CREATE TABLE IF NOT EXISTS `{tableName}` (");
+
+            foreach (var propertyInfo in propertyInfos)
+            {
+                result.AppendLine($"`{propertyInfo.Name}`    {GetType(propertyInfo)}    {GetCanNull(propertyInfo, KeyName)}    COMMENT ' ',");
+            }
+
+            result.Remove(result.Length - 1, 1);
+            result.AppendLine($"PRIMARY KEY(`{KeyName}`)");
+            result.AppendLine($") ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT '{tableName}';");
+            result.AppendLine();
+            result.AppendLine();
 
             return result.ToString();
         }
@@ -64,7 +72,7 @@ namespace AX.DataRepository.Adapters
             if (lowerName.Contains("string"))
             {
                 var length = item.GetCustomAttribute<StringLengthAttribute>(false)?.MaximumLength;
-                if (length <= 0)
+                if (length <= 0 || length == null)
                 { return "varchar(255)"; }
                 else if (length >= 4000)
                 { return "text"; }
@@ -76,6 +84,14 @@ namespace AX.DataRepository.Adapters
             { return "blob"; }
 
             throw new System.NotSupportedException($"未匹配字段对应数据库类型 {item.PropertyType.FullName}");
+        }
+
+        private object GetCanNull(PropertyInfo propertyInfo, string KeyName)
+        {
+            if (propertyInfo.Name == KeyName)
+                return "NOT NULL";
+            else
+                return "NULL";
         }
     }
 }

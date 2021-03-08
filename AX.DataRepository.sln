@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AX.DataRepository", "AX.DataRepository\AX.DataRepository.csproj", "{D5D50EFD-4965-4A45-B709-C4F75B959B36}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AX.DataRepository", "AX.DataRepository\AX.DataRepository.csproj", "{D5D50EFD-4965-4A45-B709-C4F75B959B36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AX.DataRepository.Test", "AX.DataRepository.Test\AX.DataRepository.Test.csproj", "{D5F3B56D-1B32-43C8-AD31-C7C617ADD709}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{D5D50EFD-4965-4A45-B709-C4F75B959B36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D5D50EFD-4965-4A45-B709-C4F75B959B36}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D5D50EFD-4965-4A45-B709-C4F75B959B36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D5F3B56D-1B32-43C8-AD31-C7C617ADD709}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5F3B56D-1B32-43C8-AD31-C7C617ADD709}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5F3B56D-1B32-43C8-AD31-C7C617ADD709}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5F3B56D-1B32-43C8-AD31-C7C617ADD709}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
