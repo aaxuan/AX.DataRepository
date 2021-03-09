@@ -33,7 +33,7 @@ namespace AX.DataRepository.Adapters
 
             foreach (var propertyInfo in propertyInfos)
             {
-                result.AppendLine($"`{propertyInfo.Name}`    {GetType(propertyInfo)}    {GetCanNull(propertyInfo, KeyName)}    COMMENT ' ',");
+                result.AppendLine($"`{propertyInfo.Name}`    {GetType(propertyInfo)}    {GetCanNull(propertyInfo, KeyName)}    COMMENT '{Util.TypeMaper.GetDisplayName(propertyInfo)}',");
             }
 
             result.Remove(result.Length - 1, 1);

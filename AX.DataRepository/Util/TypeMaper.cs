@@ -68,5 +68,16 @@ namespace AX.DataRepository.Util
             TypePropertyCache[type.TypeHandle] = type.GetProperties();
             return type.GetProperties().ToList();
         }
+
+        public static string GetDisplayName(PropertyInfo propertyInfo)
+        {
+            return propertyInfo.GetCustomAttribute<DisplayAttribute>()?.Name;
+        }
+
+        public static string GetDisplayName<T>()
+        {
+            var type = typeof(T);
+            return type.GetCustomAttribute<DisplayAttribute>()?.Name;
+        }
     }
 }
