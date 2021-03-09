@@ -363,31 +363,38 @@ namespace AX.DataRepository
 
         public string GetCreateTableSql<T>()
         {
-            return Adapter.GetCreateTableSql(TypeMaper.GetTableName<T>(), TypeMaper.GetSingleKey<T>().Name, TypeMaper.GetProperties(typeof(T)));
+            return GetCreateTableSql(typeof(T));
+        }
+
+        public string GetCreateTableSql(Type type)
+        {
+            return Adapter.GetCreateTableSql(type, DBConnection.Database);
         }
 
         public string UpdateSchema<T>(bool execute)
         {
+            return UpdateSchema(typeof(T), execute);
+        }
+
+        public string UpdateSchema(Type type, bool execute)
+        {
             var result = new StringBuilder();
             var dbName = DBConnection.Database;
-            var tableName = TypeMaper.GetTableName<T>();
-            var column = TypeMaper.GetProperties(typeof(T));
+            var column = TypeMaper.GetProperties(type);
 
             //判断表是否存在
-            var exitSql = Adapter.GetTableExitSql(tableName, dbName);
+            var exitSql = Adapter.GetTableExitSql(type, dbName);
             if (ExecuteScalar<int>(exitSql, null) <= 0)
-            { result.Append(GetCreateTableSql<T>()); }
+            { result.Append(GetCreateTableSql(type)); }
             //判断字段是否存在
             else
             {
                 for (int i = 0; i < column.Count; i++)
                 {
                     var item = column[i];
-                    var filedExitSql = Adapter.GetColumnExitSql(item.Name, tableName, dbName);
+                    var filedExitSql = Adapter.GetColumnExitSql(item, type, dbName);
                     if (ExecuteScalar<int>(filedExitSql, null) <= 0)
-                    {
-                        result.Append(Adapter.GetCreateColumnSql(tableName, item));
-                    }
+                    { result.Append(Adapter.GetCreateColumnSql(item, type, dbName)); }
                 }
             }
 

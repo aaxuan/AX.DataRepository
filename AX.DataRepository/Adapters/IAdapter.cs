@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Reflection;
 
 namespace AX.DataRepository.Adapters
@@ -9,12 +9,12 @@ namespace AX.DataRepository.Adapters
         string LeftEscapeChar { get; }
         string RightEscapeChar { get; }
 
-        string GetColumnExitSql(string fieldName, string tableName, string dataBaseName);
+        string GetColumnExitSql(PropertyInfo propertyInfo, Type type, string dataBaseName);
 
-        string GetTableExitSql(string tableName, string dataBaseName);
+        string GetTableExitSql(Type type, string dataBaseName);
 
-        string GetCreateColumnSql(string tableName, PropertyInfo item);
+        string GetCreateColumnSql(PropertyInfo propertyInfo, Type type, string dataBaseName);
 
-        string GetCreateTableSql(string tableName, string KeyName, List<PropertyInfo> propertyInfos);
+        string GetCreateTableSql(Type type, string dataBaseName);
     }
 }

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text;
 
@@ -13,42 +11,6 @@ namespace AX.DataRepository.Adapters
         public string RightEscapeChar { get { return "`"; } }
 
         public string DbParmChar { get { return "@"; } }
-
-        public string GetTableExitSql(string tableName, string dataBaseName)
-        {
-            return $"SELECT COUNT(*) FROM information_schema.`TABLES` WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = '{dataBaseName}'";
-        }
-
-        public string GetColumnExitSql(string fieldName, string tableName, string dataBaseName)
-        {
-            return $"SELECT COUNT(*) FROM information_schema.`COLUMNS` WHERE TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{fieldName}' AND TABLE_SCHEMA = '{dataBaseName}'";
-        }
-
-        public string GetCreateTableSql(string tableName, string KeyName, List<PropertyInfo> propertyInfos)
-        {
-            var result = new StringBuilder();
-
-            result.AppendLine($"DROP TABLE IF EXISTS `{tableName}`;");
-            result.AppendLine($"CREATE TABLE IF NOT EXISTS `{tableName}` (");
-
-            foreach (var propertyInfo in propertyInfos)
-            {
-                result.AppendLine($"`{propertyInfo.Name}`    {GetType(propertyInfo)}    {GetCanNull(propertyInfo, KeyName)}    COMMENT '{Util.TypeMaper.GetDisplayName(propertyInfo)}',");
-            }
-
-            result.Remove(result.Length - 1, 1);
-            result.AppendLine($"PRIMARY KEY(`{KeyName}`)");
-            result.AppendLine($") ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT '{tableName}';");
-            result.AppendLine();
-            result.AppendLine();
-
-            return result.ToString();
-        }
-
-        public string GetCreateColumnSql(string tableName, PropertyInfo item)
-        {
-            return $"ALTER TABLE {tableName} ADD COLUMN {item.Name.ToLower()} {GetType(item)} DEFAULT NULL;";
-        }
 
         private string GetType(PropertyInfo item)
         {
@@ -92,6 +54,48 @@ namespace AX.DataRepository.Adapters
                 return "NOT NULL";
             else
                 return "NULL";
+        }
+
+        public string GetColumnExitSql(PropertyInfo propertyInfo, System.Type type, string dataBaseName)
+        {
+            var tableName = Util.TypeMaper.GetTableName(type);
+            return $"SELECT COUNT(*) FROM information_schema.`COLUMNS` WHERE TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{propertyInfo.Name}' AND TABLE_SCHEMA = '{dataBaseName}'";
+        }
+
+        public string GetTableExitSql(System.Type type, string dataBaseName)
+        {
+            var tableName = Util.TypeMaper.GetTableName(type);
+            return $"SELECT COUNT(*) FROM information_schema.`TABLES` WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = '{dataBaseName}'";
+        }
+
+        public string GetCreateColumnSql(PropertyInfo propertyInfo, System.Type type, string dataBaseName)
+        {
+            var tableName = Util.TypeMaper.GetTableName(type);
+            return $"ALTER TABLE {tableName} ADD COLUMN {propertyInfo.Name.ToLower()} {GetType(propertyInfo)} DEFAULT NULL;";
+        }
+
+        public string GetCreateTableSql(System.Type type, string dataBaseName)
+        {
+            var result = new StringBuilder();
+            var tableName = Util.TypeMaper.GetTableName(type);
+            var key = Util.TypeMaper.GetSingleKey(type);
+            var propertyInfos = Util.TypeMaper.GetProperties(type);
+
+            result.AppendLine($"DROP TABLE IF EXISTS `{tableName}`;");
+            result.AppendLine($"CREATE TABLE IF NOT EXISTS `{tableName}` (");
+
+            foreach (var propertyInfo in propertyInfos)
+            {
+                result.AppendLine($"`{propertyInfo.Name}`    {GetType(propertyInfo)}    {GetCanNull(propertyInfo, key.Name)}    COMMENT '{Util.TypeMaper.GetDisplayName(propertyInfo)}',");
+            }
+
+            result.Remove(result.Length - 1, 1);
+            result.AppendLine($"PRIMARY KEY(`{key.Name}`)");
+            result.AppendLine($") ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT '{Util.TypeMaper.GetDisplayName(type)}';");
+            result.AppendLine();
+            result.AppendLine();
+
+            return result.ToString();
         }
     }
 }

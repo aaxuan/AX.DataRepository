@@ -1,4 +1,5 @@
 ﻿using AX.DataRepository.Models;
+using System;
 using System.Collections.Generic;
 using System.Data;
 
@@ -26,6 +27,7 @@ namespace AX.DataRepository
         int GetCount<T>();
         int GetCount<T>(FetchParameter fetchParameter);
         int GetCount<T>(string whereSql, dynamic param);
+        string GetCreateTableSql(Type type);
         string GetCreateTableSql<T>();
         DataTable GetDataTable(string sql, dynamic param);
         PageResult<T> GetList<T>(FetchParameter fetchParameter);
@@ -36,6 +38,7 @@ namespace AX.DataRepository
         bool TestConnection();
         int Update<T>(T entity);
         int Update<T>(T entity, string fields);
+        string UpdateSchema(Type type, bool execute);
         string UpdateSchema<T>(bool execute);
     }
 }
