@@ -4,12 +4,12 @@
 
 ### ⚠ 提醒
 
-⚠ 代码未经过详尽测试，不建议使用本项目代码用于商业环境，建议仅用于学习参考。
-⚠ 目前仅支持 Mysql。
-⚠ 目前不支持代码多主键。
-⚠ 目前不支持自增主键。
-⚠ 目前不支持字段名与数据库列名映射。
-⚠ 目前不支持忽略某些字段。
+* ⚠ 代码未经过详尽测试，不建议使用本项目代码用于商业环境，建议仅用于学习参考。
+* ⚠ 目前仅支持 Mysql。
+* ⚠ 目前不支持代码多主键。
+* ⚠ 目前不支持自增主键。
+* ⚠ 目前不支持字段名与数据库列名映射。
+* ⚠ 目前不支持忽略某些字段。
 
 ### 特色功能
 
@@ -25,7 +25,7 @@
 
 实体类：
 
-``` 
+```c#
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -50,10 +50,11 @@ using System.ComponentModel.DataAnnotations.Schema;
         public decimal? NullMoney { get; set; }
     }
 
-``` c#
-
-
 ``` 
+
+使用：
+
+```c#
 IDataRepository DB = new DataRepository(new MySqlConnection("Server=localhost;Database=test;Uid=root;Pwd=root;"));
 
 //生成更新当前数据库结构SQL，传参指定是否执行。
@@ -63,4 +64,4 @@ DB.DeleteAll<ObjectX>();
 
 DB.Insert(new ObjectX() { ObjectXId = Guid.NewGuid().ToString(), NulldateTime = DateTime.Now, NullMoney = 45.23M }); 
 
-```c#
+```
