@@ -74,7 +74,6 @@ namespace AX.DataRepository
             if (DBTransaction == null)
             { throw new Exception("Transaction 对象不存在"); }
             DBTransaction.Commit();
-            DBTransaction.Rollback();
             DBTransaction.Dispose();
             DBTransaction = null;
         }
@@ -87,6 +86,8 @@ namespace AX.DataRepository
         {
             if (DBTransaction != null)
             { throw new Exception("Transaction 对象已存在"); }
+            if (DBConnection.State != ConnectionState.Open)
+            { DBConnection.Open(); }
             DBTransaction = DBConnection.BeginTransaction(isolationLevel);
         }
 
@@ -134,6 +135,7 @@ namespace AX.DataRepository
 
             if (fetchParameter.HasWhereFilters)
             {
+                sql.Where();
                 foreach (var item in fetchParameter.WhereFilters)
                 {
                     sql.AppendSql($" {item.FilterName} {item.FilterType} {Adapter.DbParmChar}{item.FilterName} ");
@@ -148,6 +150,7 @@ namespace AX.DataRepository
 
             if (fetchParameter.HasHavingFilters)
             {
+                sql.Having();
                 foreach (var item in fetchParameter.HavingFilters)
                 {
                     sql.AppendSql($" {item.FilterName} {item.FilterType} {Adapter.DbParmChar}{item.FilterName} ");
@@ -188,7 +191,8 @@ namespace AX.DataRepository
             {
                 whereSql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).AppendSql(whereSql).ToSql();
             }
-            return SqlMapper.Query<T>(DBConnection, whereSql, param, DBTransaction, UseBuffered, CommandTimeout).ToList();
+            IEnumerable<T> result = SqlMapper.Query<T>(DBConnection, whereSql, param, DBTransaction, UseBuffered, CommandTimeout, CommandType.Text);
+            return result.ToList<T>();
         }
 
         public PageResult<T> GetList<T>(FetchParameter fetchParameter)
@@ -206,6 +210,7 @@ namespace AX.DataRepository
 
             if (fetchParameter.HasWhereFilters)
             {
+                sql.Append(" WHERE ");
                 foreach (var item in fetchParameter.WhereFilters)
                 {
                     sql.Append($" {item.FilterName} {item.FilterType} {Adapter.DbParmChar}{item.FilterName} ");
@@ -220,6 +225,7 @@ namespace AX.DataRepository
 
             if (fetchParameter.HasHavingFilters)
             {
+                sql.Append(" HAVING ");
                 foreach (var item in fetchParameter.HavingFilters)
                 {
                     sql.Append($" {item.FilterName} {item.FilterType} {Adapter.DbParmChar}{item.FilterName} ");

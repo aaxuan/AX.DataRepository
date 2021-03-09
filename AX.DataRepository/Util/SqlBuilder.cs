@@ -68,7 +68,7 @@ namespace AX.DataRepository.Util
         public SqlBuilder BuildUpdate(string tableName, List<PropertyInfo> updatePops)
         {
             Sqlsb.Clear();
-            var setValues = updatePops.Select(p => string.Format(" {0} = {1}{0}", p.Name, ParmChar));
+            var setValues = updatePops.Select(p => string.Format($" {LeftEscapeChar}{p.Name}{RightEscapeChar} = {ParmChar}{p.Name}"));
             Sqlsb.AppendFormat("UPDATE {0} SET {1} ", tableName, string.Join(",", setValues));
             return this;
         }
@@ -88,6 +88,15 @@ namespace AX.DataRepository.Util
             { Sqlsb.Append(" AND "); }
             else
             { Sqlsb.Append(" WHERE "); }
+            return this;
+        }
+
+        public SqlBuilder Having()
+        {
+            if (Sqlsb.ToString().ToLower().Contains("having"))
+            { Sqlsb.Append(" AND "); }
+            else
+            { Sqlsb.Append(" HAVING "); }
             return this;
         }
 

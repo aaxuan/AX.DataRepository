@@ -4,7 +4,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace AX.DataRepository.Tests
 {
@@ -44,7 +43,7 @@ namespace AX.DataRepository.Tests
             DB.DeleteAll<ObjectY>();
             DB.Insert(new ObjectY() { ObjectYId = new Random().Next(5, 100), Name = "boby" });
             DB.Insert(new ObjectY() { ObjectYId = new Random().Next(100, 900), Name = "lover" });
-            Assert.AreEqual(DB.ExecuteNonQuery("update set name = 'xxx' from objecty", null), 2);
+            Assert.AreEqual(DB.ExecuteNonQuery("update objecty set name = 'xxx'", null), 2);
         }
 
         [TestMethod()]
@@ -142,13 +141,13 @@ namespace AX.DataRepository.Tests
             }
 
             FetchParameter parameter = new FetchParameter();
-            parameter.WhereFilters.Add(new FetchFilter() { FilterName = "monry", FilterType = ">", FilterValue = "50" });
+            parameter.WhereFilters.Add(new FetchFilter() { FilterName = "Money", FilterType = ">", FilterValue = "50" });
             parameter.PageIndex = 0;
             parameter.PageItemCount = 15;
 
             var result = DB.GetList<ObjectX>(parameter);
 
-            Assert.IsTrue(result.TotalCount == 100);
+            Assert.IsTrue(result.TotalCount == 49);
             Assert.IsTrue(result.Data.Count == 15);
             Assert.IsNotNull(result.Data);
         }
@@ -162,7 +161,7 @@ namespace AX.DataRepository.Tests
             list.Add(new ObjectX() { ObjectXId = Guid.NewGuid().ToString(), Name = "lover", NulldateTime = DateTime.Now, NullMoney = 45.23M });
             list.Add(new ObjectX() { ObjectXId = Guid.NewGuid().ToString(), Name = "lover", NulldateTime = DateTime.Now, NullMoney = 45.23M });
             DB.BatchInsert(list);
-            var dt = DB.GetDataTable("select * from objecty", null);
+            var dt = DB.GetDataTable("select * from objectx", null);
             Assert.IsTrue(dt.Rows.Count == 3);
         }
 
@@ -182,7 +181,7 @@ namespace AX.DataRepository.Tests
             list.Add(new ObjectX() { ObjectXId = Guid.NewGuid().ToString(), Name = "lover", NulldateTime = DateTime.Now, NullMoney = 45.23M });
             list.Add(new ObjectX() { ObjectXId = Guid.NewGuid().ToString(), Name = "lover", NulldateTime = DateTime.Now, NullMoney = 45.23M });
             DB.BatchInsert(list);
-            Assert.IsTrue(DB.GetCount<ObjectY>() == 3);
+            Assert.IsTrue(DB.GetCount<ObjectX>() == 3);
         }
 
         [TestMethod()]
@@ -199,49 +198,48 @@ namespace AX.DataRepository.Tests
         [TestMethod()]
         public void DeleteByIdTest()
         {
-            Assert.Fail();
+            DB.DeleteAll<ObjectX>();
+            var id1 = DB.Insert(new ObjectX { ObjectXId = Guid.NewGuid().ToString(), Name = "Alice", Order = 12 });
+            Assert.IsTrue(DB.DeleteById<ObjectX>(id1.ObjectXId) == 1);
+            Assert.IsNull(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId));
         }
 
         [TestMethod()]
         public void DeleteTest()
         {
-            Assert.Fail();
+            DB.DeleteAll<ObjectX>();
+            var id1 = DB.Insert(new ObjectX { ObjectXId = Guid.NewGuid().ToString(), Name = "Alice", Order = 12 });
+            Assert.IsTrue(DB.Delete<ObjectX>("where name = @name", new { name = "Alice" }) == 1);
+            Assert.IsNull(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId));
         }
 
         [TestMethod()]
         public void DeleteTest1()
         {
-            Assert.Fail();
+            DB.DeleteAll<ObjectX>();
+            var id1 = DB.Insert(new ObjectX { ObjectXId = Guid.NewGuid().ToString(), Name = "Alice", Order = 12 });
+            Assert.IsTrue(DB.Delete<ObjectX>(id1) == 1);
+            Assert.IsNull(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId));
         }
 
         [TestMethod()]
         public void UpdateTest()
         {
-            Assert.Fail();
-        }
+            DB.DeleteAll<ObjectX>();
+            var id1 = DB.Insert(new ObjectX { ObjectXId = Guid.NewGuid().ToString(), Name = "Alice", Order = 12 });
 
-        [TestMethod()]
-        public void UpdateTest1()
-        {
-            Assert.Fail();
-        }
+            id1.Name = "lover";
+            id1.Order = 50;
+            DB.Update(id1);
+            Assert.IsTrue(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId).Name == "lover");
+            Assert.IsTrue(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId).Order == 50);
 
-        [TestMethod()]
-        public void GetCreateTableSqlTest()
-        {
-            Assert.Fail();
-        }
-
-        [TestMethod()]
-        public void UpdateSchemaTest()
-        {
-            Assert.Fail();
-        }
-
-        [TestMethod()]
-        public void DisposeTest()
-        {
-            Assert.Fail();
+            id1 = DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId);
+            id1.Name = "bob";
+            id1.NulldateTime = DateTime.Now;
+            DB.Update(id1, "name");
+            Assert.IsTrue(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId).Name == "bob");
+            Assert.IsTrue(DB.SingleOrDefaultById<ObjectX>(id1.ObjectXId).NulldateTime == null);
         }
     }
 }
