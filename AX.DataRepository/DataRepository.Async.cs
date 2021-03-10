@@ -1,80 +1,41 @@
-﻿using AX.DataRepository.Adapters;
-using AX.DataRepository.Models;
+﻿using AX.DataRepository.Models;
 using AX.DataRepository.Util;
 using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AX.DataRepository
 {
-    public partial class DataRepository : IDisposable, IDataRepository
+    public partial class DataRepository
     {
-        private DbTransaction DBTransaction { get; set; }
-
-        private IAdapter Adapter;
-
-        private SqlBuilder SqlBuilder;
-
-        public DbConnection DBConnection { get; private set; }
-
-        public DataBaseType DBType
-        {
-            get
-            {
-                var typeName = DBConnection.GetType().Name.ToLower();
-                if (typeName.Contains("mysql"))
-                { return DataBaseType.MySql; }
-                return DataBaseType.None;
-            }
-        }
-
-        public int? CommandTimeout { get; set; } = null;
-
-        public bool UseBuffered { get; set; } = false;
-
-        /// <summary>
-        /// 使用已有链接初始化
-        /// </summary>
-        /// <param name="dbConnection"></param>
-        public DataRepository(DbConnection dbConnection)
-        {
-            DBConnection = dbConnection;
-
-            if (DBType == DataBaseType.MySql)
-            {
-                Adapter = new MySqlAdapter();
-                SqlBuilder = new SqlBuilder(Adapter.LeftEscapeChar, Adapter.RightEscapeChar, Adapter.DbParmChar);
-            }
-        }
-
         #region 事务
 
         /// <summary>
         /// 回滚事务
         /// </summary>
-        public void AbortTransaction()
+        public async Task AbortTransactionAsync()
         {
             if (DBTransaction == null)
             { throw new Exception("Transaction 对象不存在"); }
-            DBTransaction.Rollback();
-            DBTransaction.Dispose();
+            await DBTransaction.RollbackAsync();
+            await DBTransaction.DisposeAsync();
             DBTransaction = null;
         }
 
         /// <summary>
         /// 提交事务
         /// </summary>
-        public void CompleteTransaction()
+        public async Task CompleteTransactionAsync()
         {
             if (DBTransaction == null)
             { throw new Exception("Transaction 对象不存在"); }
-            DBTransaction.Commit();
-            DBTransaction.Dispose();
+            await DBTransaction.CommitAsync();
+            await DBTransaction.DisposeAsync();
             DBTransaction = null;
         }
 
@@ -82,53 +43,45 @@ namespace AX.DataRepository
         /// 开启事务
         /// </summary>
         /// <param name="isolationLevel"></param>
-        public void BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
+        public async Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
             if (DBTransaction != null)
             { throw new Exception("Transaction 对象已存在"); }
             if (DBConnection.State != ConnectionState.Open)
-            { DBConnection.Open(); }
-            DBTransaction = DBConnection.BeginTransaction(isolationLevel);
+            { await DBConnection.OpenAsync(); }
+            DBTransaction = await DBConnection.BeginTransactionAsync(isolationLevel);
         }
 
         #endregion 事务
 
-        public int ExecuteNonQuery(string sql, dynamic param)
+        public async Task<int> ExecuteNonQueryAsync(string sql, dynamic param)
         {
-            return SqlMapper.Execute(DBConnection, sql, param, DBTransaction, CommandTimeout);
+            return await SqlMapper.ExecuteAsync(DBConnection, sql, param, DBTransaction, CommandTimeout);
         }
 
-        public T ExecuteScalar<T>(string sql, dynamic param)
+        public async Task<T> ExecuteScalarAsync<T>(string sql, dynamic param)
         {
-            return SqlMapper.ExecuteScalar<T>(DBConnection, sql, param, DBTransaction, CommandTimeout);
+            return await SqlMapper.ExecuteScalarAsync<T>(DBConnection, sql, param, DBTransaction, CommandTimeout);
         }
 
         #region 查
 
-        public bool TestConnection()
-        {
-            var result = ExecuteScalar<string>("SELECT 'test' AS test;", null);
-            if (string.IsNullOrWhiteSpace(result))
-            { return false; }
-            return true;
-        }
-
-        public int GetCount<T>()
+        public async Task<int> GetCountAsync<T>()
         {
             var sql = SqlBuilder.BuildSelectCount(TypeMaper.GetTableName<T>()).ToSql();
-            return ExecuteScalar<int>(sql, null);
+            return await ExecuteScalarAsync<int>(sql, null);
         }
 
-        public int GetCount<T>(string whereSql, dynamic param)
+        public async Task<int> GetCountAsync<T>(string whereSql, dynamic param)
         {
             if (whereSql.TrimStart().ToLower().StartsWith("where", StringComparison.InvariantCulture))
             {
                 whereSql = SqlBuilder.BuildSelectCount(TypeMaper.GetTableName<T>()).AppendSql(whereSql).ToSql();
             }
-            return ExecuteScalar<int>(whereSql, param);
+            return await ExecuteScalarAsync<int>(whereSql, param);
         }
 
-        public int GetCount<T>(FetchParameter fetchParameter)
+        public async Task<int> GetCountAsync<T>(FetchParameter fetchParameter)
         {
             var sql = SqlBuilder.BuildSelectCount(TypeMaper.GetTableName<T>());
             DynamicParameters param = new DynamicParameters();
@@ -158,44 +111,45 @@ namespace AX.DataRepository
                 }
             }
 
-            return ExecuteScalar<int>(sql.ToSql(), param);
+            return await ExecuteScalarAsync<int>(sql.ToSql(), param);
         }
 
-        public T SingleOrDefault<T>(string whereSql, dynamic param)
+        public async Task<T> SingleOrDefaultAsync<T>(string whereSql, dynamic param)
         {
             if (whereSql.TrimStart().ToLower().StartsWith("where", StringComparison.InvariantCulture))
             {
                 whereSql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).AppendSql(whereSql).ToSql();
             }
-            return SqlMapper.QuerySingleOrDefault<T>(DBConnection, whereSql, param, DBTransaction, CommandTimeout);
+            return await SqlMapper.QueryFirstOrDefaultAsync<T>(DBConnection, whereSql, param, DBTransaction, CommandTimeout);
         }
 
-        public T SingleOrDefaultById<T>(dynamic PrimaryKey)
+        public async Task<T> SingleOrDefaultByIdAsync<T>(dynamic PrimaryKey)
         {
             var keyProperties = TypeMaper.GetSingleKey<T>();
             var sql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
             var param = new DynamicParameters();
             param.Add(Adapter.DbParmChar + keyProperties.Name, PrimaryKey);
-            return SqlMapper.QuerySingleOrDefault<T>(DBConnection, sql, param, DBTransaction, CommandTimeout);
+            return await SqlMapper.QuerySingleOrDefaultAsync<T>(DBConnection, sql, param, DBTransaction, CommandTimeout);
         }
 
-        public List<T> GetAll<T>()
+        public async Task<List<T>> GetAllAsync<T>()
         {
             var sql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).ToSql();
-            return DBConnection.Query<T>(sql, null, DBTransaction, UseBuffered, CommandTimeout).ToList();
+            return (await DBConnection.QueryAsync<T>(sql, null, DBTransaction, CommandTimeout)).ToList();
         }
 
-        public List<T> GetList<T>(string whereSql, dynamic param)
+        public async Task<List<T>> GetListAsync<T>(string whereSql, dynamic param)
         {
             if (whereSql.TrimStart().ToLower().StartsWith("where", StringComparison.InvariantCulture))
             {
                 whereSql = SqlBuilder.BuildSelect(TypeMaper.GetTableName<T>(), TypeMaper.GetProperties(typeof(T))).AppendSql(whereSql).ToSql();
             }
-            IEnumerable<T> result = SqlMapper.Query<T>(DBConnection, whereSql, param, DBTransaction, UseBuffered, CommandTimeout, CommandType.Text);
+
+            IEnumerable<T> result = await SqlMapper.QueryAsync<T>(DBConnection, whereSql, param, DBTransaction, CommandTimeout, CommandType.Text);
             return result.ToList<T>();
         }
 
-        public PageResult<T> GetList<T>(FetchParameter fetchParameter)
+        public async Task<PageResult<T>> GetListAsync<T>(FetchParameter fetchParameter)
         {
             var sql = new StringBuilder();
             DynamicParameters param = new DynamicParameters();
@@ -244,18 +198,18 @@ namespace AX.DataRepository
             }
 
             var result = new PageResult<T>();
-            result.TotalCount = GetCount<T>(fetchParameter);
+            result.TotalCount = await GetCountAsync<T>(fetchParameter);
             result.PageIndex = fetchParameter.PageIndex;
             result.PageItemCount = fetchParameter.PageItemCount;
-            result.Data = DBConnection.Query<T>(sql.ToString(), param, DBTransaction, UseBuffered, CommandTimeout).ToList();
+            result.Data = (await DBConnection.QueryAsync<T>(sql.ToString(), param, DBTransaction, CommandTimeout)).ToList();
 
             return result;
         }
 
-        public DataTable GetDataTable(string sql, dynamic param)
+        public async Task<DataTable> GetDataTableAsync(string sql, dynamic param)
         {
             var result = new DataTable();
-            result.Load(SqlMapper.ExecuteReader(DBConnection, sql, param, DBTransaction, CommandTimeout));
+            result.Load(await SqlMapper.ExecuteReaderAsync(DBConnection, sql, param, DBTransaction, CommandTimeout));
             return result;
         }
 
@@ -263,23 +217,23 @@ namespace AX.DataRepository
 
         #region 增
 
-        public T Insert<T>(T entity)
+        public async Task<T> InsertAsync<T>(T entity)
         {
             var type = typeof(T);
             var tableName = TypeMaper.GetTableName<T>();
             var allProperties = TypeMaper.GetProperties(type);
             var sql = SqlBuilder.BuildInsert(tableName, allProperties).ToSql();
-            this.ExecuteNonQuery(sql, entity);
+            await this.ExecuteNonQueryAsync(sql, entity);
             return entity;
         }
 
-        public List<T> BatchInsert<T>(List<T> entities)
+        public async Task<List<T>> BatchInsertAsync<T>(List<T> entities)
         {
             var type = typeof(T);
             var tableName = TypeMaper.GetTableName<T>();
             var allProperties = TypeMaper.GetProperties(type);
             var sql = SqlBuilder.BuildInsert(tableName, allProperties).ToSql();
-            this.ExecuteNonQuery(sql, entities);
+            await this.ExecuteNonQueryAsync(sql, entities);
             return entities;
         }
 
@@ -292,45 +246,45 @@ namespace AX.DataRepository
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        public int DeleteAll<T>()
+        public async Task<int> DeleteAllAsync<T>()
         {
             var tableName = TypeMaper.GetTableName<T>();
             var sql = SqlBuilder.BuildDelete(tableName).ToSql();
-            return ExecuteNonQuery(sql, null);
+            return await ExecuteNonQueryAsync(sql, null);
         }
 
-        public int DeleteById<T>(dynamic id)
+        public async Task<int> DeleteByIdAsync<T>(dynamic id)
         {
             var keyProperties = TypeMaper.GetSingleKey<T>();
             var sql = SqlBuilder.BuildDelete(TypeMaper.GetTableName<T>()).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
             var param = new DynamicParameters();
             param.Add($"{Adapter.DbParmChar}{keyProperties.Name}", id);
-            return ExecuteNonQuery(sql, param);
+            return await ExecuteNonQueryAsync(sql, param);
         }
 
-        public int Delete<T>(T entity)
+        public async Task<int> DeleteAsync<T>(T entity)
         {
             if (entity == null) { return 0; }
             var keyProperties = TypeMaper.GetSingleKey<T>();
             var tableName = TypeMaper.GetTableName<T>();
             var sql = SqlBuilder.BuildDelete(tableName).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
-            return ExecuteNonQuery(sql.ToString(), entity);
+            return await ExecuteNonQueryAsync(sql.ToString(), entity);
         }
 
-        public int Delete<T>(string whereSql, dynamic param)
+        public async Task<int> DeleteAsync<T>(string whereSql, dynamic param)
         {
             if (whereSql.TrimStart().ToLower().StartsWith("where", StringComparison.InvariantCulture))
             {
                 whereSql = SqlBuilder.BuildDelete(TypeMaper.GetTableName<T>()).AppendSql(whereSql).ToSql();
             }
-            return ExecuteNonQuery(whereSql, param);
+            return await ExecuteNonQueryAsync(whereSql, param);
         }
 
         #endregion 删
 
         #region 改
 
-        public int Update<T>(T entity)
+        public async Task<int> UpdateAsync<T>(T entity)
         {
             var type = typeof(T);
             var keyProperties = TypeMaper.GetSingleKey<T>();
@@ -338,10 +292,10 @@ namespace AX.DataRepository
             var allProperties = TypeMaper.GetProperties(type);
             var noKeyProperties = allProperties.Except(new List<PropertyInfo>() { keyProperties }).ToList();
             var sql = SqlBuilder.BuildUpdate(tableName, noKeyProperties).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
-            return ExecuteNonQuery(sql.ToString(), entity);
+            return await ExecuteNonQueryAsync(sql.ToString(), entity);
         }
 
-        public int Update<T>(T entity, string fields)
+        public async Task<int> UpdateAsync<T>(T entity, string fields)
         {
             if (string.IsNullOrWhiteSpace(fields))
             { return 0; }
@@ -356,60 +310,9 @@ namespace AX.DataRepository
             var noKeyProperties = allProperties.Except(new List<PropertyInfo>() { keyProperties }).ToList();
 
             var sql = SqlBuilder.BuildUpdate(tableName, noKeyProperties).Where().AppendColumnNameEqualsValue(keyProperties).ToSql();
-            return ExecuteNonQuery(sql.ToString(), entity);
+            return await ExecuteNonQueryAsync(sql.ToString(), entity);
         }
 
         #endregion 改
-
-        public string GetCreateTableSql<T>()
-        {
-            return GetCreateTableSql(typeof(T));
-        }
-
-        public string GetCreateTableSql(Type type)
-        {
-            return Adapter.GetCreateTableSql(type, DBConnection.Database);
-        }
-
-        public string UpdateSchema<T>(bool execute)
-        {
-            return UpdateSchema(typeof(T), execute);
-        }
-
-        public string UpdateSchema(Type type, bool execute)
-        {
-            var result = new StringBuilder();
-            var dbName = DBConnection.Database;
-            var column = TypeMaper.GetProperties(type);
-
-            //判断表是否存在
-            var exitSql = Adapter.GetTableExitSql(type, dbName);
-            if (ExecuteScalar<int>(exitSql, null) <= 0)
-            { result.Append(GetCreateTableSql(type)); }
-            //判断字段是否存在
-            else
-            {
-                for (int i = 0; i < column.Count; i++)
-                {
-                    var item = column[i];
-                    var filedExitSql = Adapter.GetColumnExitSql(item, type, dbName);
-                    if (ExecuteScalar<int>(filedExitSql, null) <= 0)
-                    { result.Append(Adapter.GetCreateColumnSql(item, type, dbName)); }
-                }
-            }
-
-            if (execute && result.Length > 0)
-            { ExecuteNonQuery(result.ToString(), null); }
-            return result.ToString();
-        }
-
-        public void Dispose()
-        {
-            if (DBConnection != null)
-            {
-                DBConnection.Close();
-                DBConnection.Dispose();
-            }
-        }
     }
 }
